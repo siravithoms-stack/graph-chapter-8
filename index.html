@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบคำนวณและวิเคราะห์ต้นทุนการผลิต - การบ้านบทที่ 8</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        },
+                        sau: {
+                            gold: '#d97706',
+                            navy: '#0f172a'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Sarabun', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Sarabun', 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        .input-cell {
+            transition: all 0.2s ease;
+        }
+        .input-cell:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.4);
+            border-color: #2563eb;
+        }
+        [contenteditable="true"] {
+            outline: none;
+            border-radius: 0.25rem;
+            transition: all 0.15s ease;
+            cursor: text;
+        }
+        [contenteditable="true"]:hover {
+            background-color: rgba(59, 130, 246, 0.12);
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+        }
+        [contenteditable="true"]:focus {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            box-shadow: 0 0 0 2px #2563eb !important;
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white;
+            }
+            .print-card {
+                box-shadow: none !important;
+                border: 1px solid #e2e8f0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between custom-scrollbar">
+
+    <!-- Header / Navbar -->
+    <header class="bg-sau-navy text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-amber-500 text-slate-900 p-2 rounded-lg font-bold text-xl flex items-center justify-center w-10 h-10 shadow">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h1 contenteditable="true" class="text-lg font-bold tracking-wide leading-tight">ระบบการควบคุมต้นทุนการผลิต (Cost Control System)</h1>
+                            <span contenteditable="true" class="text-[11px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40 flex items-center gap-1">
+                                <i class="fa-solid fa-pen-to-square"></i> แก้ไขข้อความ & ตัวเลขได้ทุกจุด
+                            </span>
+                        </div>
+                        <p contenteditable="true" class="text-xs text-slate-300">วิศวกรรมศาสตร์ มหาวิทยาลัยเอเชียอาคเนย์ | การบ้านบทที่ 8 / เตรียมสอบ</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2 no-print">
+                    <button onclick="resetDefaults()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg transition flex items-center gap-1.5 border border-slate-600">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>รีเซ็ตค่าตั้งต้น</span>
+                    </button>
+                    <button onclick="window.print()" class="text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
+                        <i class="fa-solid fa-print"></i>
+                        <span>พิมพ์ / ส่งออก PDF</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation Tabs (Non-editable so buttons click cleanly) -->
+        <div class="bg-slate-800 border-t border-slate-700 no-print">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav class="flex space-x-1 sm:space-x-4 overflow-x-auto py-2 custom-scrollbar">
+                    <button id="tab-btn-1" onclick="switchTab(1)" class="tab-btn text-xs sm:text-sm font-medium px-4 py-2 rounded-md transition flex items-center gap-2 whitespace-nowrap bg-brand-600 text-white shadow">
+                        <i class="fa-solid fa-chart-pie"></i> <span>ข้อ 1: บัญชีบริหาร & ตัดสินใจเลิก/ผลิตต่อ</span>
+                    </button>
+                    <button id="tab-btn-2" onclick="switchTab(2)" class="tab-btn text-xs sm:text-sm font-medium px-4 py-2 rounded-md transition flex items-center gap-2 whitespace-nowrap text-slate-300 hover:bg-slate-700 hover:text-white">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> <span>ข้อ 2: บัตรต้นทุนงานสั่งทำ & วิเคราะห์ผลต่าง</span>
+                    </button>
+                    <button id="tab-btn-3" onclick="switchTab(3)" class="tab-btn text-xs sm:text-sm font-medium px-4 py-2 rounded-md transition flex items-center gap-2 whitespace-nowrap text-slate-300 hover:bg-slate-700 hover:text-white">
+                        <i class="fa-solid fa-book-bookmark"></i> <span>สรุปสูตรคำนวณและทฤษฎีบทที่ 8</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- Custom Toast Notification -->
+        <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 border border-slate-700 pointer-events-none">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-green-400"></i>
+            <span id="toast-message" class="text-sm">อัปเดตข้อมูลสำเร็จ</span>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 1: QUESTION 1 (CONCRETE PRODUCTS)    -->
+        <!-- ========================================== -->
+        <div id="tab-content-1" class="tab-page space-y-6">
+            <!-- Header banner -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <span contenteditable="true" class="bg-brand-100 text-brand-800 text-xs font-semibold px-2.5 py-1 rounded border border-brand-200">โจทย์ข้อที่ 1</span>
+                    <h2 contenteditable="true" class="text-xl font-bold text-slate-800 mt-2">การวิเคราะห์บัญชีบริหารเพื่อการตัดสินใจผลิต</h2>
+                    <p contenteditable="true" class="text-sm text-slate-600 mt-1">ประเมินผลการตัดสินใจ: หากราคาวัตถุดิบเปลี่ยนแปลง จะเลือก <b>ยกเลิก</b> หรือ <b>ผลิตต่อ</b>?</p>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-right min-w-[200px]">
+                    <span contenteditable="true" class="text-xs text-slate-500 block">สถานะผลต่างการตัดสินใจ</span>
+                    <span id="q1-decision-badge" class="inline-block mt-1 text-sm font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        <i class="fa-solid fa-circle-check mr-1"></i> ควรผลิตต่อ (กำไรดีกว่า)
+                    </span>
+                </div>
+            </div>
+
+            <!-- Editable Data Table for Products -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                    <h3 contenteditable="true" class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-brand-600"></i> ตารางใส่ตัวเลขและแก้ไขข้อความได้ทุกช่อง
+                    </h3>
+                    <span contenteditable="true" class="text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 font-medium">
+                        <i class="fa-solid fa-i-cursor"></i> คลิกตรงข้อความเพื่อพิมพ์แก้คำ/โจทย์ได้ทันที
+                    </span>
+                </div>
+                
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-sm text-left text-slate-700">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-100 border-b border-slate-200">
+                            <tr>
+                                <th contenteditable="true" class="px-4 py-3 font-semibold">รายการ / ผลิตภัณฑ์</th>
+                                <th contenteditable="true" id="q1-name-p1" class="px-4 py-3 text-center font-semibold bg-blue-50/50">แผ่นพื้นสำเร็จรูป</th>
+                                <th contenteditable="true" id="q1-name-p2" class="px-4 py-3 text-center font-semibold bg-blue-50/50">เสาเข็มอัดแรง</th>
+                                <th contenteditable="true" id="q1-name-p3" class="px-4 py-3 text-center font-semibold bg-blue-50/50">เสาเข็ม Spun Pile</th>
+                                <th contenteditable="true" class="px-4 py-3 text-right font-semibold bg-slate-200">รวมทั้งหมด (บาท)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            <!-- Volume -->
+                            <tr class="hover:bg-slate-50">
+                                <td contenteditable="true" class="px-4 py-3 font-medium text-slate-900">ปริมาณการผลิต (หน่วย/ปี)</td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-vol-plank" value="8000" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-vol-prestressed" value="5000" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-vol-spun" value="1500" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-3 text-right font-mono font-semibold text-slate-900 bg-slate-50" id="q1-tot-vol">14,500 หน่วย</td>
+                            </tr>
+
+                            <!-- Selling Price per unit -->
+                            <tr class="hover:bg-slate-50">
+                                <td contenteditable="true" class="px-4 py-3 font-medium text-slate-900">ราคาขายต่อหน่วย (บาท/หน่วย)</td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-price-plank" value="500" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-price-prestressed" value="6500" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-price-spun" value="9000" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-3 text-right text-slate-400 italic bg-slate-50">-</td>
+                            </tr>
+
+                            <!-- Total Revenue -->
+                            <tr class="bg-amber-50/40 font-semibold">
+                                <td contenteditable="true" class="px-4 py-3 text-amber-900">ยอดขายรวม (บาท)</td>
+                                <td class="px-4 py-3 text-center font-mono text-amber-900" id="q1-rev-plank">4,000,000</td>
+                                <td class="px-4 py-3 text-center font-mono text-amber-900" id="q1-rev-prestressed">32,500,000</td>
+                                <td class="px-4 py-3 text-center font-mono text-amber-900" id="q1-rev-spun">13,500,000</td>
+                                <td class="px-4 py-3 text-right font-mono text-amber-900 bg-amber-100/60" id="q1-rev-total">50,000,000</td>
+                            </tr>
+
+                            <!-- Raw Material Unit Cost -->
+                            <tr class="hover:bg-slate-50">
+                                <td contenteditable="true" class="px-4 py-3 font-medium text-slate-900">
+                                    ต้นทุนวัตถุดิบทางตรง (บาท/หน่วย)
+                                    <span class="block text-xs text-rose-600 font-normal">*วัตถุดิบปรับราคาขึ้น</span>
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-matunit-plank" value="300" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-matunit-prestressed" value="3500" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-matunit-spun" value="7500" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-3 text-right text-slate-400 italic bg-slate-50">-</td>
+                            </tr>
+
+                            <!-- Total Raw Material Cost -->
+                            <tr class="hover:bg-slate-50">
+                                <td contenteditable="true" class="px-4 py-3 font-medium text-slate-900 pl-6">↳ รวมต้นทุนวัตถุดิบทางตรง (บาท)</td>
+                                <td class="px-4 py-3 text-center font-mono" id="q1-mat-plank">2,400,000</td>
+                                <td class="px-4 py-3 text-center font-mono" id="q1-mat-prestressed">17,500,000</td>
+                                <td class="px-4 py-3 text-center font-mono" id="q1-mat-spun">11,250,000</td>
+                                <td class="px-4 py-3 text-right font-mono font-semibold bg-slate-50" id="q1-mat-total">31,150,000</td>
+                            </tr>
+
+                            <!-- Depreciation per product line -->
+                            <tr class="hover:bg-slate-50">
+                                <td contenteditable="true" class="px-4 py-3 font-medium text-slate-900">ค่าเสื่อมราคาเครื่องจักร (บาท/ปี)</td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-dep-plank" value="12000" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-dep-prestressed" value="12000" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-dep-spun" value="12000" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-3 text-right font-mono font-semibold bg-slate-50" id="q1-dep-total">36,000</td>
+                            </tr>
+
+                            <!-- Labor & Overhead per unit -->
+                            <tr class="hover:bg-slate-50">
+                                <td contenteditable="true" class="px-4 py-3 font-medium text-slate-900">ค่าแรงงานและโสหุ้ย (บาท/หน่วย)</td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-lounit-plank" value="50" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-lounit-prestressed" value="50" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-2 text-center bg-blue-50/30">
+                                    <input type="number" id="q1-lounit-spun" value="50" onchange="calcQ1()" class="input-cell w-28 text-center bg-white border border-slate-300 rounded px-2 py-1 font-mono text-sm">
+                                </td>
+                                <td class="px-4 py-3 text-right text-slate-400 italic bg-slate-50">-</td>
+                            </tr>
+
+                            <!-- Total Labor & Overhead -->
+                            <tr class="hover:bg-slate-50">
+                                <td contenteditable="true" class="px-4 py-3 font-medium text-slate-900 pl-6">↳ รวมค่าแรงและโสหุ้ย (บาท)</td>
+                                <td class="px-4 py-3 text-center font-mono" id="q1-lo-plank">400,000</td>
+                                <td class="px-4 py-3 text-center font-mono" id="q1-lo-prestressed">250,000</td>
+                                <td class="px-4 py-3 text-center font-mono" id="q1-lo-spun">75,000</td>
+                                <td class="px-4 py-3 text-right font-mono font-semibold bg-slate-50" id="q1-lo-total">725,000</td>
+                            </tr>
+
+                            <!-- Total Cost -->
+                            <tr class="bg-slate-100 font-semibold">
+                                <td contenteditable="true" class="px-4 py-3 text-slate-900">รวมค่าใช้จ่ายทั้งหมด (บาท)</td>
+                                <td class="px-4 py-3 text-center font-mono text-slate-900" id="q1-cost-plank">2,812,000</td>
+                                <td class="px-4 py-3 text-center font-mono text-slate-900" id="q1-cost-prestressed">17,762,000</td>
+                                <td class="px-4 py-3 text-center font-mono text-slate-900" id="q1-cost-spun">11,337,000</td>
+                                <td class="px-4 py-3 text-right font-mono text-slate-900 bg-slate-200" id="q1-cost-total">31,911,000</td>
+                            </tr>
+
+                            <!-- Operating Profit/Loss -->
+                            <tr class="bg-emerald-50/60 font-bold text-base">
+                                <td contenteditable="true" class="px-4 py-4 text-emerald-950">กำไร (ขาดทุน) สุทธิ (บาท)</td>
+                                <td class="px-4 py-4 text-center font-mono text-emerald-800" id="q1-profit-plank">1,188,000</td>
+                                <td class="px-4 py-4 text-center font-mono text-emerald-800" id="q1-profit-prestressed">14,738,000</td>
+                                <td class="px-4 py-4 text-center font-mono text-emerald-800" id="q1-profit-spun">2,163,000</td>
+                                <td class="px-4 py-4 text-right font-mono text-emerald-900 bg-emerald-100" id="q1-profit-total">18,089,000</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Decision Analysis Cards (Option Comparison) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Option 1: Stop Product 3 -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span contenteditable="true" class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded">ทางเลือกที่ 1</span>
+                            <span contenteditable="true" class="text-xs text-slate-500">ยกเลิกผลิตสินค้าชนิดที่ 3</span>
+                        </div>
+                        <h4 contenteditable="true" id="q1-opt1-title" class="text-base font-bold text-slate-800">ผลิตเฉพาะ "แผ่นพื้น" และ "เสาเข็มอัดแรง"</h4>
+                        <p contenteditable="true" id="q1-opt1-desc" class="text-xs text-slate-500 mt-1">หมายเหตุ: ค่าเสื่อมราคาเครื่องจักรคงเป็นต้นทุนคงที่รวมของโรงงาน</p>
+
+                        <div class="mt-4 space-y-2 border-t border-slate-100 pt-3 text-sm">
+                            <div class="flex justify-between">
+                                <span contenteditable="true" class="text-slate-600">ยอดขายรวม:</span>
+                                <span class="font-mono font-semibold text-slate-800" id="q1-opt1-rev">36,500,000 บาท</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span contenteditable="true" class="text-slate-600">ต้นทุนวัตถุดิบทางตรง:</span>
+                                <span class="font-mono text-slate-800" id="q1-opt1-mat">19,900,000 บาท</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span contenteditable="true" class="text-slate-600">ค่าเสื่อมราคาเครื่องจักร (คงที่):</span>
+                                <span class="font-mono text-slate-800" id="q1-opt1-dep">36,000 บาท</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span contenteditable="true" class="text-slate-600">ค่าแรงงานและโสหุ้ย:</span>
+                                <span class="font-mono text-slate-800" id="q1-opt1-lo">650,000 บาท</span>
+                            </div>
+                            <div class="flex justify-between border-t border-slate-200 pt-2 font-bold">
+                                <span contenteditable="true">รวมกำไรคงเหลือ:</span>
+                                <span class="font-mono text-rose-700 text-lg" id="q1-opt1-profit">15,914,000 บาท</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option 2: Keep All Products -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border-2 border-emerald-500 flex flex-col justify-between relative overflow-hidden">
+                    <div contenteditable="true" class="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl">
+                        ทางเลือกที่แนะนำ
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span contenteditable="true" class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded">ทางเลือกที่ 2</span>
+                            <span contenteditable="true" class="text-xs text-slate-500">เดินหน้าผลิตทั้ง 3 ชนิด</span>
+                        </div>
+                        <h4 contenteditable="true" id="q1-opt2-title" class="text-base font-bold text-slate-800">ผลิต แผ่นพื้น, เสาเข็มอัดแรง และ Spun Pile</h4>
+                        <p contenteditable="true" class="text-xs text-slate-500 mt-1">ผลิตต่อเนื่องแม้ต้นทุนวัตถุดิบจะปรับเพิ่มขึ้น</p>
+
+                        <div class="mt-4 space-y-2 border-t border-slate-100 pt-3 text-sm">
+                            <div class="flex justify-between">
+                                <span contenteditable="true" class="text-slate-600">ยอดขายรวม:</span>
+                                <span class="font-mono font-semibold text-slate-800" id="q1-opt2-rev">50,000,000 บาท</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span contenteditable="true" class="text-slate-600">ต้นทุนวัตถุดิบทางตรง:</span>
+                                <span class="font-mono text-slate-800" id="q1-opt2-mat">31,150,000 บาท</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span contenteditable="true" class="text-slate-600">ค่าเสื่อมราคาเครื่องจักร:</span>
+                                <span class="font-mono text-slate-800" id="q1-opt2-dep">36,000 บาท</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span contenteditable="true" class="text-slate-600">ค่าแรงงานและโสหุ้ย:</span>
+                                <span class="font-mono text-slate-800" id="q1-opt2-lo">725,000 บาท</span>
+                            </div>
+                            <div class="flex justify-between border-t border-slate-200 pt-2 font-bold">
+                                <span contenteditable="true">รวมกำไรคงเหลือ:</span>
+                                <span class="font-mono text-emerald-700 text-lg" id="q1-opt2-profit">18,089,000 บาท</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 bg-emerald-50 p-3 rounded-lg">
+                        <p class="text-xs text-emerald-900"><b contenteditable="true">ข้อสรุปผู้บริหาร:</b> <span id="q1-conclusion-text">ผู้บริหารควรเลือกทางเลือกที่ 2</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart for Q1 -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h4 contenteditable="true" class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-bar text-brand-600"></i> แผนภูมิเปรียบเทียบรายได้ ต้นทุน และกำไรสุทธิแต่ละผลิตภัณฑ์
+                </h4>
+                <div class="h-72 w-full">
+                    <canvas id="chartQ1"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: QUESTION 2 (JOB ORDER COST CARD)   -->
+        <!-- ========================================== -->
+        <div id="tab-content-2" class="tab-page space-y-6 hidden">
+            <!-- Header banner -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <span contenteditable="true" class="bg-brand-100 text-brand-800 text-xs font-semibold px-2.5 py-1 rounded border border-brand-200">โจทย์ข้อที่ 2</span>
+                    <h2 contenteditable="true" class="text-xl font-bold text-slate-800 mt-2">บัตรต้นทุนงานสั่งทำและการวิเคราะห์ผลต่าง (Job Order Cost Card)</h2>
+                    <p contenteditable="true" class="text-sm text-slate-600 mt-1">โรงงานผลิตผนังคอนกรีตสำเร็จรูป 1,000 แผง (ภายนอก 400 แผง, ภายใน 600 แผง) ใบสั่งซื้อเลขที่ #029</p>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-right min-w-[220px]">
+                    <span contenteditable="true" class="text-xs text-slate-500 block">ผลต่างกำไรสุทธิจากการกะประมาณ</span>
+                    <span id="q2-net-variance-badge" class="inline-block mt-1 text-sm font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        <i class="fa-solid fa-thumbs-up mr-1"></i> น่าพอใจ (+1,121,600 บ.)
+                    </span>
+                </div>
+            </div>
+
+            <!-- Parameters Setup Bar -->
+            <div class="bg-slate-900 text-white p-5 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label contenteditable="true" class="block text-xs text-slate-400 mb-1">ต้นทุนผลิตกะประมาณ (% ราคาขาย)</label>
+                    <div class="flex items-center">
+                        <input type="number" id="q2-pct-prod" value="60" onchange="calcQ2()" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-amber-400 font-mono text-sm focus:outline-none focus:border-amber-500">
+                        <span contenteditable="true" class="ml-2 text-slate-300 text-sm">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label contenteditable="true" class="block text-xs text-slate-400 mb-1">ต้นทุนบริหารกะประมาณ (% ราคาขาย)</label>
+                    <div class="flex items-center">
+                        <input type="number" id="q2-pct-admin" value="8" onchange="calcQ2()" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-amber-400 font-mono text-sm focus:outline-none focus:border-amber-500">
+                        <span contenteditable="true" class="ml-2 text-slate-300 text-sm">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label contenteditable="true" class="block text-xs text-slate-400 mb-1">อัตราภาษีเงินได้ (% จากกำไรก่อนภาษี)</label>
+                    <div class="flex items-center">
+                        <input type="number" id="q2-pct-tax" value="20" onchange="calcQ2()" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-amber-400 font-mono text-sm focus:outline-none focus:border-amber-500">
+                        <span contenteditable="true" class="ml-2 text-slate-300 text-sm">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label contenteditable="true" class="block text-xs text-slate-400 mb-1">อัตราค่าใช้จ่ายโรงงานจัดสรร (บาท/ชม.แรงงาน)</label>
+                    <div class="flex items-center">
+                        <input type="number" id="q2-oh-rate" value="30" onchange="calcQ2()" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-amber-400 font-mono text-sm focus:outline-none focus:border-amber-500">
+                        <span contenteditable="true" class="ml-2 text-slate-300 text-sm">บ./ชม.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job Order Cost Card Standard Layout -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden print-card">
+                <!-- Card Header -->
+                <div class="bg-slate-100 p-4 border-b border-slate-300">
+                    <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
+                        <h3 contenteditable="true" class="text-lg font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                            <i class="fa-solid fa-id-card text-brand-700"></i> บัตรต้นทุนงานสั่งทำ (Job Order Cost Sheet)
+                        </h3>
+                        <span contenteditable="true" id="q2-job-no" class="bg-slate-800 text-white font-mono text-xs px-3 py-1 rounded">เลขที่งาน: 029</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                        <div><span contenteditable="true" class="text-slate-500">ชื่อลูกค้า:</span> <span contenteditable="true" id="q2-client-name" class="font-semibold text-slate-800">โครงการคอนโดมิเนียม</span></div>
+                        <div><span contenteditable="true" class="text-slate-500">ชื่อผลิตภัณฑ์:</span> <span contenteditable="true" id="q2-product-name" class="font-semibold text-slate-800">ผนังคอนกรีตสำเร็จรูป</span></div>
+                        <div><span contenteditable="true" class="text-slate-500">วันที่สั่งผลิต/ส่งมอบ:</span> <span contenteditable="true" class="font-semibold text-slate-800">5 ต.ค. - 29 พ.ย.</span></div>
+                        <div><span contenteditable="true" class="text-slate-500">จำนวนผลิตรวม:</span> <span contenteditable="true" class="font-semibold text-slate-800">1,000 แผง</span></div>
+                    </div>
+                </div>
+
+                <!-- Product Sales Summary Editable -->
+                <div class="p-4 bg-amber-50/50 border-b border-slate-200">
+                    <h4 contenteditable="true" class="text-xs font-bold text-amber-900 uppercase tracking-wider mb-2">1. รายละเอียดราคาขายรวม (Sales Revenue Breakdown)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Exterior Wall -->
+                        <div class="bg-white p-3 rounded border border-amber-200 flex items-center justify-between">
+                            <div>
+                                <span contenteditable="true" id="q2-name-ext" class="font-semibold text-sm text-slate-800 block">ผนังภายนอก (Exterior Panel)</span>
+                                <span contenteditable="true" class="text-xs text-slate-500">จำนวน × ราคาขาย (บาท/หน่วย)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="q2-qty-ext" value="400" onchange="calcQ2()" class="input-cell w-20 text-center bg-blue-50 border border-slate-300 rounded py-1 font-mono text-xs">
+                                <span>×</span>
+                                <input type="number" id="q2-price-ext" value="5000" onchange="calcQ2()" class="input-cell w-24 text-center bg-blue-50 border border-slate-300 rounded py-1 font-mono text-xs">
+                                <span>=</span>
+                                <span class="font-mono font-bold text-slate-900 w-28 text-right" id="q2-rev-ext">2,000,000</span>
+                            </div>
+                        </div>
+                        <!-- Interior Wall -->
+                        <div class="bg-white p-3 rounded border border-amber-200 flex items-center justify-between">
+                            <div>
+                                <span contenteditable="true" id="q2-name-int" class="font-semibold text-sm text-slate-800 block">ผนังภายใน (Interior Panel)</span>
+                                <span contenteditable="true" class="text-xs text-slate-500">จำนวน × ราคาขาย (บาท/หน่วย)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="q2-qty-int" value="600" onchange="calcQ2()" class="input-cell w-20 text-center bg-blue-50 border border-slate-300 rounded py-1 font-mono text-xs">
+                                <span>×</span>
+                                <input type="number" id="q2-price-int" value="3500" onchange="calcQ2()" class="input-cell w-24 text-center bg-blue-50 border border-slate-300 rounded py-1 font-mono text-xs">
+                                <span>=</span>
+                                <span class="font-mono font-bold text-slate-900 w-28 text-right" id="q2-rev-int">2,100,000</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-right text-sm font-bold text-slate-900">
+                        <span contenteditable="true">ราคาขายรวมทั้งสิ้น:</span> <span class="text-amber-700 font-mono text-base" id="q2-total-rev">4,100,000 บาท</span>
+                    </div>
+                </div>
+
+                <!-- 3 Production Cost Tables (Materials, Labor, Overhead) -->
+                <div class="p-4 space-y-6">
+                    <h4 contenteditable="true" class="text-xs font-bold text-slate-700 uppercase tracking-wider">2. บันทึกต้นทุนที่เกิดขึ้นจริงแยกตามแผนก (Actual Departmental Costs)</h4>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Raw Materials Table -->
+                        <div class="border border-slate-200 rounded-lg overflow-hidden">
+                            <div class="bg-blue-600 text-white px-3 py-2 text-xs font-bold flex justify-between items-center">
+                                <span contenteditable="true"><i class="fa-solid fa-cubes mr-1"></i> ต้นทุนวัตถุดิบทางตรง (DM)</span>
+                                <span contenteditable="true" class="font-normal text-[10px]">1,000 หน่วย</span>
+                            </div>
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-100 border-b border-slate-200 text-slate-600">
+                                    <tr>
+                                        <th contenteditable="true" class="p-2">แผนก / รายการ</th>
+                                        <th contenteditable="true" class="p-2 text-center">บ./หน่วย</th>
+                                        <th contenteditable="true" class="p-2 text-right">จำนวนเงิน (บาท)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr>
+                                        <td contenteditable="true" id="q2-dept-name-1" class="p-2">1. เตรียมแบบหล่อ (5 ต.ค.)</td>
+                                        <td class="p-2 text-center">
+                                            <input type="number" id="q2-mat-rate1" value="100" onchange="calcQ2()" class="input-cell w-16 text-center bg-blue-50 border rounded py-0.5 font-mono">
+                                        </td>
+                                        <td class="p-2 text-right font-mono" id="q2-mat-amt1">100,000</td>
+                                    </tr>
+                                    <tr>
+                                        <td contenteditable="true" id="q2-dept-name-2" class="p-2">2. ตัดเหล็ก/ติดตั้ง (20 ต.ค.)</td>
+                                        <td class="p-2 text-center">
+                                            <input type="number" id="q2-mat-rate2" value="200" onchange="calcQ2()" class="input-cell w-16 text-center bg-blue-50 border rounded py-0.5 font-mono">
+                                        </td>
+                                        <td class="p-2 text-right font-mono" id="q2-mat-amt2">200,000</td>
+                                    </tr>
+                                    <tr>
+                                        <td contenteditable="true" id="q2-dept-name-3" class="p-2">3. เทคอนกรีต/แต่งผิว (1 พ.ย.)</td>
+                                        <td class="p-2 text-center">
+                                            <input type="number" id="q2-mat-rate3" value="500" onchange="calcQ2()" class="input-cell w-16 text-center bg-blue-50 border rounded py-0.5 font-mono">
+                                        </td>
+                                        <td class="p-2 text-right font-mono" id="q2-mat-amt3">500,000</td>
+                                    </tr>
+                                    <tr>
+                                        <td contenteditable="true" id="q2-dept-name-4" class="p-2">4. แกะแบบ/ขนส่ง (20 พ.ย.)</td>
+                                        <td class="p-2 text-center">
+                                            <input type="number" id="q2-mat-rate4" value="200" onchange="calcQ2()" class="input-cell w-16 text-center bg-blue-50 border rounded py-0.5 font-mono">
+                                        </td>
+                                        <td class="p-2 text-right font-mono" id="q2-mat-amt4">200,000</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="bg-slate-50 font-bold border-t border-slate-200">
+                                    <tr>
+                                        <td contenteditable="true" class="p-2">รวมวัตถุดิบ (DM)</td>
+                                        <td class="p-2 text-center font-mono" id="q2-mat-rate-total">1,000</td>
+                                        <td class="p-2 text-right font-mono text-blue-700" id="q2-mat-total">1,000,000</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <!-- Direct Labor Table -->
+                        <div class="border border-slate-200 rounded-lg overflow-hidden">
+                            <div class="bg-emerald-600 text-white px-3 py-2 text-xs font-bold flex justify-between items-center">
+                                <span contenteditable="true"><i class="fa-solid fa-people-carry-box mr-1"></i> ต้นทุนแรงงานทางตรง (DL)</span>
+                                <span contenteditable="true" class="font-normal text-[10px]">ชม. × อัตรา</span>
+                            </div>
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-100 border-b border-slate-200 text-slate-600">
+                                    <tr>
+                                        <th contenteditable="true" class="p-2">แผนก</th>
+                                        <th contenteditable="true" class="p-2 text-center">ชั่วโมง</th>
+                                        <th contenteditable="true" class="p-2 text-center">บ./ชม.</th>
+                                        <th contenteditable="true" class="p-2 text-right">รวม (บาท)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr>
+                                        <td contenteditable="true" class="p-2">1. เตรียมแบบหล่อ</td>
+                                        <td class="p-2 text-center"><input type="number" id="q2-hrs1" value="240" onchange="calcQ2()" class="input-cell w-12 text-center bg-blue-50 border rounded py-0.5 font-mono"></td>
+                                        <td class="p-2 text-center"><input type="number" id="q2-lrate1" value="20" onchange="calcQ2()" class="input-cell w-12 text-center bg-blue-50 border rounded py-0.5 font-mono"></td>
+                                        <td class="p-2 text-right font-mono" id="q2-lamt1">4,800</td>
+                                    </tr>
+                                    <tr>
+                                        <td contenteditable="true" class="p-2">2. ตัดเหล็ก/ติดตั้ง</td>
+                                        <td class="p-2 text-center"><input type="number" id="q2-hrs2" value="240" onchange="calcQ2()" class="input-cell w-12 text-center bg-blue-50 border rounded py-0.5 font-mono"></td>
+                                        <td class="p-2 text-center"><input type="number" id="q2-lrate2" value="30" onchange="calcQ2()" class="input-cell w-12 text-center bg-blue-50 border rounded py-0.5 font-mono"></td>
+                                        <td class="p-2 text-right font-mono" id="q2-lamt2">7,200</td>
+                                    </tr>
+                                    <tr>
+                                        <td contenteditable="true" class="p-2">3. เทคอนกรีต/แต่งผิว</td>
+                                        <td class="p-2 text-center"><input type="number" id="q2-hrs3" value="320" onchange="calcQ2()" class="input-cell w-12 text-center bg-blue-50 border rounded py-0.5 font-mono"></td>
+                                        <td class="p-2 text-center"><input type="number" id="q2-lrate3" value="50" onchange="calcQ2()" class="input-cell w-12 text-center bg-blue-50 border rounded py-0.5 font-mono"></td>
+                                        <td class="p-2 text-right font-mono" id="q2-lamt3">16,000</td>
+                                    </tr>
+                                    <tr>
+                                        <td contenteditable="true" class="p-2">4. แกะแบบ/ขนส่ง</td>
+                                        <td class="p-2 text-center"><input type="number" id="q2-hrs4" value="120" onchange="calcQ2()" class="input-cell w-12 text-center bg-blue-50 border rounded py-0.5 font-mono"></td>
+                                        <td class="p-2 text-center"><input type="number" id="q2-lrate4" value="20" onchange="calcQ2()" class="input-cell w-12 text-center bg-blue-50 border rounded py-0.5 font-mono"></td>
+                                        <td class="p-2 text-right font-mono" id="q2-lamt4">2,400</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="bg-slate-50 font-bold border-t border-slate-200">
+                                    <tr>
+                                        <td contenteditable="true" class="p-2">รวมค่าแรง (DL)</td>
+                                        <td class="p-2 text-center font-mono text-emerald-700" id="q2-hrs-total">920 ชม.</td>
+                                        <td class="p-2 text-center text-slate-400">-</td>
+                                        <td class="p-2 text-right font-mono text-emerald-700" id="q2-labor-total">30,400</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <!-- Factory Overhead Table -->
+                        <div class="border border-slate-200 rounded-lg overflow-hidden flex flex-col justify-between">
+                            <div>
+                                <div contenteditable="true" class="bg-purple-600 text-white px-3 py-2 text-xs font-bold">
+                                    <i class="fa-solid fa-industry mr-1"></i> ค่าใช้จ่ายโรงงานจัดสรร (FOH)
+                                </div>
+                                <div class="p-3 text-xs space-y-3">
+                                    <p contenteditable="true" class="text-slate-600">ใช้เกณฑ์ชั่วโมงแรงงานทางตรงโดยรวมในการปันส่วน:</p>
+                                    <div class="bg-purple-50 p-3 rounded border border-purple-100 space-y-2">
+                                        <div class="flex justify-between">
+                                            <span contenteditable="true">ชั่วโมงแรงงานรวม:</span>
+                                            <span class="font-mono font-bold" id="q2-foh-hrs">920 ชม.</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span contenteditable="true">อัตราจัดสรร:</span>
+                                            <span class="font-mono font-bold" id="q2-foh-rate-disp">30 บ./ชม.</span>
+                                        </div>
+                                        <div class="border-t border-purple-200 pt-2 flex justify-between font-bold text-purple-900">
+                                            <span contenteditable="true">รวมค่าใช้จ่ายโรงงาน:</span>
+                                            <span class="font-mono text-sm" id="q2-oh-total">27,600 บาท</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Production Cost Summary Card inside column -->
+                            <div class="m-3 p-3 bg-slate-900 text-white rounded-lg text-xs space-y-1">
+                                <div class="flex justify-between">
+                                    <span contenteditable="true" class="text-slate-400">วัตถุดิบ (DM):</span>
+                                    <span class="font-mono" id="q2-summary-dm">1,000,000</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span contenteditable="true" class="text-slate-400">ค่าแรง (DL):</span>
+                                    <span class="font-mono" id="q2-summary-dl">30,400</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span contenteditable="true" class="text-slate-400">โสหุ้ย (FOH):</span>
+                                    <span class="font-mono" id="q2-summary-foh">27,600</span>
+                                </div>
+                                <div class="border-t border-slate-700 pt-1 flex justify-between font-bold text-amber-400 text-sm">
+                                    <span contenteditable="true">ต้นทุนผลิตจริงรวม:</span>
+                                    <span class="font-mono" id="q2-actual-prod-cost">1,058,000</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comprehensive Income & Variance Analysis Sheet -->
+                    <div class="mt-8 border-t border-slate-300 pt-6">
+                        <h4 contenteditable="true" class="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-scale-balanced text-brand-600"></i> ตารางสรุปการวิเคราะห์ผลต่าง (Estimated vs Actual Variance Sheet)
+                        </h4>
+
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-sm text-left border border-slate-200 rounded-lg overflow-hidden">
+                                <thead class="text-xs uppercase bg-slate-800 text-white">
+                                    <tr>
+                                        <th contenteditable="true" class="p-3">รายการการดำเนินงาน</th>
+                                        <th contenteditable="true" class="p-3 text-right">เกณฑ์กะประมาณ (Budget/Est.)</th>
+                                        <th contenteditable="true" class="p-3 text-right">เกิดขึ้นจริง (Actual)</th>
+                                        <th contenteditable="true" class="p-3 text-right">ผลต่าง (Variance)</th>
+                                        <th contenteditable="true" class="p-3 text-center">การประเมินผล</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200">
+                                    <!-- Revenue -->
+                                    <tr class="bg-slate-50 font-semibold">
+                                        <td contenteditable="true" class="p-3">ราคาขาย / ยอดขายสุทธิ</td>
+                                        <td class="p-3 text-right font-mono" id="q2-comp-est-rev">4,100,000</td>
+                                        <td class="p-3 text-right font-mono" id="q2-comp-act-rev">4,100,000</td>
+                                        <td class="p-3 text-right font-mono text-slate-500">0</td>
+                                        <td contenteditable="true" class="p-3 text-center text-xs text-slate-500">เท่ากับกะประมาณ</td>
+                                    </tr>
+
+                                    <!-- Production Cost -->
+                                    <tr class="hover:bg-slate-50">
+                                        <td contenteditable="true" class="p-3">หัก: ต้นทุนการผลิต</td>
+                                        <td class="p-3 text-right font-mono text-slate-700" id="q2-comp-est-cost">2,460,000 <span class="text-[10px] text-slate-400 block">(60%)</span></td>
+                                        <td class="p-3 text-right font-mono text-slate-900 font-bold" id="q2-comp-act-cost">1,058,000</td>
+                                        <td class="p-3 text-right font-mono font-bold text-emerald-600" id="q2-comp-var-cost">+1,402,000</td>
+                                        <td class="p-3 text-center">
+                                            <span id="q2-badge-cost" contenteditable="true" class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-800">น่าพอใจ (Favorable)</span>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Gross Profit -->
+                                    <tr class="bg-amber-50/50 font-bold">
+                                        <td contenteditable="true" class="p-3 text-amber-950">กำไรขั้นต้น (Gross Profit)</td>
+                                        <td class="p-3 text-right font-mono text-amber-900" id="q2-comp-est-gp">1,640,000</td>
+                                        <td class="p-3 text-right font-mono text-amber-900" id="q2-comp-act-gp">3,042,000</td>
+                                        <td class="p-3 text-right font-mono text-emerald-600" id="q2-comp-var-gp">+1,402,000</td>
+                                        <td class="p-3 text-center">
+                                            <span contenteditable="true" class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-800">น่าพอใจ</span>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Admin Expense -->
+                                    <tr class="hover:bg-slate-50">
+                                        <td contenteditable="true" class="p-3">หัก: ค่าใช้จ่ายในการขายและบริหาร</td>
+                                        <td class="p-3 text-right font-mono text-slate-700" id="q2-comp-est-admin">328,000 <span class="text-[10px] text-slate-400 block">(8%)</span></td>
+                                        <td class="p-3 text-right font-mono text-slate-900" id="q2-comp-act-admin">328,000</td>
+                                        <td class="p-3 text-right font-mono text-slate-500" id="q2-comp-var-admin">0</td>
+                                        <td contenteditable="true" class="p-3 text-center text-xs text-slate-500">ตามเป้าหมาย</td>
+                                    </tr>
+
+                                    <!-- Profit Before Tax -->
+                                    <tr class="hover:bg-slate-50 font-semibold">
+                                        <td contenteditable="true" class="p-3">กำไรก่อนหักภาษี (EBIT)</td>
+                                        <td class="p-3 text-right font-mono" id="q2-comp-est-pbt">1,312,000</td>
+                                        <td class="p-3 text-right font-mono" id="q2-comp-act-pbt">2,714,000</td>
+                                        <td class="p-3 text-right font-mono text-emerald-600" id="q2-comp-var-pbt">+1,402,000</td>
+                                        <td class="p-3 text-center">
+                                            <span contenteditable="true" class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-800">น่าพอใจ</span>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Income Tax -->
+                                    <tr class="hover:bg-slate-50">
+                                        <td contenteditable="true" class="p-3">หัก: ภาษีเงินได้</td>
+                                        <td class="p-3 text-right font-mono text-slate-700" id="q2-comp-est-tax">262,400 <span class="text-[10px] text-slate-400 block">(20%)</span></td>
+                                        <td class="p-3 text-right font-mono text-slate-900" id="q2-comp-act-tax">542,800</td>
+                                        <td class="p-3 text-right font-mono text-rose-600" id="q2-comp-var-tax">-280,400</td>
+                                        <td contenteditable="true" class="p-3 text-center text-xs text-slate-500">จ่ายภาษีเพิ่มตามกำไร</td>
+                                    </tr>
+
+                                    <!-- Net Profit -->
+                                    <tr class="bg-emerald-100/70 font-bold text-base">
+                                        <td contenteditable="true" class="p-4 text-emerald-950">กำไรสุทธิ (Net Profit)</td>
+                                        <td class="p-4 text-right font-mono text-emerald-900" id="q2-comp-est-np">1,049,600</td>
+                                        <td class="p-4 text-right font-mono text-emerald-950 text-lg" id="q2-comp-act-np">2,171,200</td>
+                                        <td class="p-4 text-right font-mono text-emerald-800 text-lg" id="q2-comp-var-np">+1,121,600</td>
+                                        <td class="p-4 text-center">
+                                            <span id="q2-badge-np" contenteditable="true" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-sm">น่าพอใจอย่างมาก</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart for Q2 -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h4 contenteditable="true" class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column text-brand-600"></i> แผนภูมิเปรียบเทียบต้นทุนและกำไร (กะประมาณ VS เกิดขึ้นจริง)
+                </h4>
+                <div class="h-72 w-full">
+                    <canvas id="chartQ2"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: THEORY & FORMULAS REFERENCE        -->
+        <!-- ========================================== -->
+        <div id="tab-content-3" class="tab-page space-y-6 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="border-b border-slate-200 pb-4 mb-4">
+                    <span contenteditable="true" class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded">คู่มืออ้างอิงวิชาการ</span>
+                    <h2 contenteditable="true" class="text-xl font-bold text-slate-800 mt-2">สรุปสูตรคำนวณและทฤษฎี บทที่ 8: การควบคุมต้นทุนการผลิต</h2>
+                    <p contenteditable="true" class="text-sm text-slate-600 mt-1">สรุปสาระสำคัญตามคำสอน รศ.กวี หวังนิเวศน์กุล คณะวิศวกรรมศาสตร์ มหาวิทยาลัยเอเชียอาคเนย์</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Formula Box 1 -->
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                        <h3 contenteditable="true" class="font-bold text-brand-800 border-b border-slate-200 pb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-cube"></i> 1. ต้นทุนวัตถุดิบทางตรง (Direct Material Variance)
+                        </h3>
+                        <div class="text-xs space-y-2 text-slate-700">
+                            <p><b contenteditable="true">• ต้นทุนมาตรฐานวัตถุดิบ/หน่วย:</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">มาตรฐานจำนวนวัตถุดิบ × มาตรฐานราคาวัตถุดิบ</code></p>
+                            <p><b contenteditable="true">• ผลต่างจากการใช้วัตถุดิบ:</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">(จำนวนวัตถุดิบมาตรฐาน - จำนวนวัตถุดิบจริง) × ราคามาตรฐาน</code></p>
+                            <p><b contenteditable="true">• ผลต่างจากราคาวัตถุดิบ:</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">(ราคามาตรฐาน - ราคาซื้อจริง) × จำนวนวัตถุดิบที่ซื้อจริง</code></p>
+                            <p contenteditable="true" class="text-slate-500 italic">* หมายเหตุ: ค่าเป็นบวก = น่าพอใจ (ประหยัด), ค่าเป็นลบ = ไม่น่าพอใจ (จ่ายแพงขึ้น)</p>
+                        </div>
+                    </div>
+
+                    <!-- Formula Box 2 -->
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                        <h3 contenteditable="true" class="font-bold text-brand-800 border-b border-slate-200 pb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-user-clock"></i> 2. ต้นทุนแรงงานทางตรง (Direct Labor Variance)
+                        </h3>
+                        <div class="text-xs space-y-2 text-slate-700">
+                            <p><b contenteditable="true">• ต้นทุนมาตรฐานแรงงาน/หน่วย:</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">มาตรฐานเวลาที่ใช้ในการผลิต × มาตรฐานอัตราค่าแรงงาน</code></p>
+                            <p><b contenteditable="true">• ผลต่างจากการใช้เวลา (ประสิทธิภาพ):</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">(เวลามาตรฐาน - เวลาที่ใช้จริง) × อัตราค่าแรงมาตรฐาน</code></p>
+                            <p><b contenteditable="true">• ผลต่างจากอัตราค่าแรง:</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">(อัตราค่าแรงมาตรฐาน - อัตราค่าแรงที่จ่ายจริง) × ชั่วโมงจริง</code></p>
+                        </div>
+                    </div>
+
+                    <!-- Formula Box 3 -->
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                        <h3 contenteditable="true" class="font-bold text-brand-800 border-b border-slate-200 pb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-industry"></i> 3. ค่าใช้จ่ายโรงงาน (Factory Overhead Variance)
+                        </h3>
+                        <div class="text-xs space-y-2 text-slate-700">
+                            <p><b contenteditable="true">• ผลต่างจากงบประมาณ:</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">งบประมาณที่ยอมให้ตามชั่วโมงจริง - ค่าใช้จ่ายโรงงานที่จ่ายจริง</code></p>
+                            <p><b contenteditable="true">• ผลต่างเนื่องจากกำลังผลิต:</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">(ชั่วโมงแรงงานมาตรฐาน - ชั่วโมงแรงงานจริง) × อัตราโสหุ้ยคงที่</code></p>
+                            <p><b contenteditable="true">• ผลต่างเนื่องจากประสิทธิภาพ:</b> <br><code contenteditable="true" class="bg-white px-2 py-1 rounded border font-mono">(ชั่วโมงแรงงานมาตรฐาน - ชั่วโมงแรงงานจริง) × อัตราโสหุ้ยผันแปร</code></p>
+                        </div>
+                    </div>
+
+                    <!-- Theory Box 4 -->
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+                        <h3 contenteditable="true" class="font-bold text-brand-800 border-b border-slate-200 pb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group"></i> 4. ประเภทของการควบคุมต้นทุน
+                        </h3>
+                        <div class="text-xs space-y-2 text-slate-700">
+                            <p contenteditable="true"><b>1. งานที่สั่งทำ (Job Order Costing):</b> ควบคุมต้นทุนแยกตามคำสั่งซื้อ/แต่ละงวดงาน เช่น งานรับเหมาก่อสร้าง ผนังสำเร็จรูป โดยเทียบต้นทุนจริงกับต้นทุนกะประมาณ (Estimated Cost)</p>
+                            <p contenteditable="true"><b>2. งานผลิตเพื่อเก็บเข้าคลัง (Process Costing):</b> ควบคุมการผลิตต่อเนื่องจำนวนมาก โดยคำนวณต้นทุนมาตรฐานต่อหน่วยของแต่ละแผนกเพื่อโอนย้ายงวดงาน</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-4 border-t border-slate-800 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div>
+                <span contenteditable="true">คณะวิศวกรรมศาสตร์ มหาวิทยาลัยเอเชียอาคเนย์ (SAU)</span>
+            </div>
+            <div>
+                <span contenteditable="true">Master of Engineering in Construction Management</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let chartQ1Instance = null;
+        let chartQ2Instance = null;
+
+        function switchTab(tabIndex) {
+            for (let i = 1; i <= 3; i++) {
+                const page = document.getElementById('tab-content-' + i);
+                const btn = document.getElementById('tab-btn-' + i);
+                if (page) {
+                    if (i === tabIndex) {
+                        page.classList.remove('hidden');
+                    } else {
+                        page.classList.add('hidden');
+                    }
+                }
+                if (btn) {
+                    if (i === tabIndex) {
+                        btn.className = "tab-btn text-xs sm:text-sm font-medium px-4 py-2 rounded-md transition flex items-center gap-2 whitespace-nowrap bg-brand-600 text-white shadow";
+                    } else {
+                        btn.className = "tab-btn text-xs sm:text-sm font-medium px-4 py-2 rounded-md transition flex items-center gap-2 whitespace-nowrap text-slate-300 hover:bg-slate-700 hover:text-white";
+                    }
+                }
+            }
+            if (chartQ1Instance) chartQ1Instance.resize();
+            if (chartQ2Instance) chartQ2Instance.resize();
+        }
+
+        function formatNum(num) {
+            return new Intl.NumberFormat('th-TH').format(Math.round(num));
+        }
+
+        function calcQ1() {
+            const p1Name = document.getElementById('q1-name-p1')?.innerText.trim() || 'ผลิตภัณฑ์ 1';
+            const p2Name = document.getElementById('q1-name-p2')?.innerText.trim() || 'ผลิตภัณฑ์ 2';
+            const p3Name = document.getElementById('q1-name-p3')?.innerText.trim() || 'ผลิตภัณฑ์ 3';
+
+            const volPlank = parseFloat(document.getElementById('q1-vol-plank')?.value) || 0;
+            const volPrestressed = parseFloat(document.getElementById('q1-vol-prestressed')?.value) || 0;
+            const volSpun = parseFloat(document.getElementById('q1-vol-spun')?.value) || 0;
+
+            const pricePlank = parseFloat(document.getElementById('q1-price-plank')?.value) || 0;
+            const pricePrestressed = parseFloat(document.getElementById('q1-price-prestressed')?.value) || 0;
+            const priceSpun = parseFloat(document.getElementById('q1-price-spun')?.value) || 0;
+
+            const matunitPlank = parseFloat(document.getElementById('q1-matunit-plank')?.value) || 0;
+            const matunitPrestressed = parseFloat(document.getElementById('q1-matunit-prestressed')?.value) || 0;
+            const matunitSpun = parseFloat(document.getElementById('q1-matunit-spun')?.value) || 0;
+
+            const depPlank = parseFloat(document.getElementById('q1-dep-plank')?.value) || 0;
+            const depPrestressed = parseFloat(document.getElementById('q1-dep-prestressed')?.value) || 0;
+            const depSpun = parseFloat(document.getElementById('q1-dep-spun')?.value) || 0;
+
+            const lounitPlank = parseFloat(document.getElementById('q1-lounit-plank')?.value) || 0;
+            const lounitPrestressed = parseFloat(document.getElementById('q1-lounit-prestressed')?.value) || 0;
+            const lounitSpun = parseFloat(document.getElementById('q1-lounit-spun')?.value) || 0;
+
+            const revPlank = volPlank * pricePlank;
+            const revPrestressed = volPrestressed * pricePrestressed;
+            const revSpun = volSpun * priceSpun;
+            const revTotal = revPlank + revPrestressed + revSpun;
+
+            const matPlank = volPlank * matunitPlank;
+            const matPrestressed = volPrestressed * matunitPrestressed;
+            const matSpun = volSpun * matunitSpun;
+            const matTotal = matPlank + matPrestressed + matSpun;
+
+            const depTotal = depPlank + depPrestressed + depSpun;
+
+            const loPlank = volPlank * lounitPlank;
+            const loPrestressed = volPrestressed * lounitPrestressed;
+            const loSpun = volSpun * lounitSpun;
+            const loTotal = loPlank + loPrestressed + loSpun;
+
+            const costPlank = matPlank + depPlank + loPlank;
+            const costPrestressed = matPrestressed + depPrestressed + loPrestressed;
+            const costSpun = matSpun + depSpun + loSpun;
+            const costTotal = costPlank + costPrestressed + costSpun;
+
+            const profitPlank = revPlank - costPlank;
+            const profitPrestressed = revPrestressed - costPrestressed;
+            const profitSpun = revSpun - costSpun;
+            const profitTotal = revTotal - costTotal;
+
+            if (document.getElementById('q1-tot-vol')) document.getElementById('q1-tot-vol').textContent = formatNum(volPlank + volPrestressed + volSpun) + " หน่วย";
+
+            if (document.getElementById('q1-rev-plank')) document.getElementById('q1-rev-plank').textContent = formatNum(revPlank);
+            if (document.getElementById('q1-rev-prestressed')) document.getElementById('q1-rev-prestressed').textContent = formatNum(revPrestressed);
+            if (document.getElementById('q1-rev-spun')) document.getElementById('q1-rev-spun').textContent = formatNum(revSpun);
+            if (document.getElementById('q1-rev-total')) document.getElementById('q1-rev-total').textContent = formatNum(revTotal);
+
+            if (document.getElementById('q1-mat-plank')) document.getElementById('q1-mat-plank').textContent = formatNum(matPlank);
+            if (document.getElementById('q1-mat-prestressed')) document.getElementById('q1-mat-prestressed').textContent = formatNum(matPrestressed);
+            if (document.getElementById('q1-mat-spun')) document.getElementById('q1-mat-spun').textContent = formatNum(matSpun);
+            if (document.getElementById('q1-mat-total')) document.getElementById('q1-mat-total').textContent = formatNum(matTotal);
+
+            if (document.getElementById('q1-dep-total')) document.getElementById('q1-dep-total').textContent = formatNum(depTotal);
+
+            if (document.getElementById('q1-lo-plank')) document.getElementById('q1-lo-plank').textContent = formatNum(loPlank);
+            if (document.getElementById('q1-lo-prestressed')) document.getElementById('q1-lo-prestressed').textContent = formatNum(loPrestressed);
+            if (document.getElementById('q1-lo-spun')) document.getElementById('q1-lo-spun').textContent = formatNum(loSpun);
+            if (document.getElementById('q1-lo-total')) document.getElementById('q1-lo-total').textContent = formatNum(loTotal);
+
+            if (document.getElementById('q1-cost-plank')) document.getElementById('q1-cost-plank').textContent = formatNum(costPlank);
+            if (document.getElementById('q1-cost-prestressed')) document.getElementById('q1-cost-prestressed').textContent = formatNum(costPrestressed);
+            if (document.getElementById('q1-cost-spun')) document.getElementById('q1-cost-spun').textContent = formatNum(costSpun);
+            if (document.getElementById('q1-cost-total')) document.getElementById('q1-cost-total').textContent = formatNum(costTotal);
+
+            if (document.getElementById('q1-profit-plank')) document.getElementById('q1-profit-plank').textContent = formatNum(profitPlank);
+            if (document.getElementById('q1-profit-prestressed')) document.getElementById('q1-profit-prestressed').textContent = formatNum(profitPrestressed);
+            if (document.getElementById('q1-profit-spun')) document.getElementById('q1-profit-spun').textContent = formatNum(profitSpun);
+            if (document.getElementById('q1-profit-total')) document.getElementById('q1-profit-total').textContent = formatNum(profitTotal);
+
+            // Option 1
+            const opt1Rev = revPlank + revPrestressed;
+            const opt1Mat = matPlank + matPrestressed;
+            const opt1Dep = depTotal;
+            const opt1LO = loPlank + loPrestressed;
+            const opt1Profit = opt1Rev - (opt1Mat + opt1Dep + opt1LO);
+
+            if (document.getElementById('q1-opt1-rev')) document.getElementById('q1-opt1-rev').textContent = formatNum(opt1Rev) + " บาท";
+            if (document.getElementById('q1-opt1-mat')) document.getElementById('q1-opt1-mat').textContent = formatNum(opt1Mat) + " บาท";
+            if (document.getElementById('q1-opt1-dep')) document.getElementById('q1-opt1-dep').textContent = formatNum(opt1Dep) + " บาท";
+            if (document.getElementById('q1-opt1-lo')) document.getElementById('q1-opt1-lo').textContent = formatNum(opt1LO) + " บาท";
+            if (document.getElementById('q1-opt1-profit')) document.getElementById('q1-opt1-profit').textContent = formatNum(opt1Profit) + " บาท";
+
+            // Option 2
+            const opt2Rev = revTotal;
+            const opt2Mat = matTotal;
+            const opt2Dep = depTotal;
+            const opt2LO = loTotal;
+            const opt2Profit = profitTotal;
+
+            if (document.getElementById('q1-opt2-rev')) document.getElementById('q1-opt2-rev').textContent = formatNum(opt2Rev) + " บาท";
+            if (document.getElementById('q1-opt2-mat')) document.getElementById('q1-opt2-mat').textContent = formatNum(opt2Mat) + " บาท";
+            if (document.getElementById('q1-opt2-dep')) document.getElementById('q1-opt2-dep').textContent = formatNum(opt2Dep) + " บาท";
+            if (document.getElementById('q1-opt2-lo')) document.getElementById('q1-opt2-lo').textContent = formatNum(opt2LO) + " บาท";
+            if (document.getElementById('q1-opt2-profit')) document.getElementById('q1-opt2-profit').textContent = formatNum(opt2Profit) + " บาท";
+
+            const opt1Title = document.getElementById('q1-opt1-title');
+            if (opt1Title) opt1Title.innerHTML = `ผลิตเฉพาะ "${p1Name}" และ "${p2Name}"`;
+
+            const opt2Title = document.getElementById('q1-opt2-title');
+            if (opt2Title) opt2Title.innerHTML = `ผลิตทั้ง 3 ชนิด (${p1Name}, ${p2Name}, ${p3Name})`;
+
+            const opt1Desc = document.getElementById('q1-opt1-desc');
+            if (opt1Desc) opt1Desc.innerHTML = `หมายเหตุ: ค่าเสื่อมราคาของ ${p3Name} (${formatNum(depSpun)} บาท) ยังคงเป็นต้นทุนคงที่รวมของโรงงาน`;
+
+            const diff = opt2Profit - opt1Profit;
+            const badge = document.getElementById('q1-decision-badge');
+            const conclusion = document.getElementById('q1-conclusion-text');
+
+            if (badge && conclusion) {
+                if (diff >= 0) {
+                    badge.className = "inline-block mt-1 text-sm font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
+                    badge.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> ควรผลิตต่อ (กำไรมากกว่า ${formatNum(diff)} บ.)`;
+                    conclusion.innerHTML = `ผู้บริหารควรเลือก <b>ทางเลือกที่ 2 (เดินหน้าผลิตต่อทั้ง 3 ชนิด)</b> เพราะสร้างกำไรสุทธิรวมสูงกว่าทางเลือกที่ 1 อยู่ถึง <b>${formatNum(diff)} บาท</b> (${p3Name} ยังคงทำกำไรส่วนถัวเฉลี่ยเป็นบวก ${formatNum(profitSpun)} บาท)`;
+                } else {
+                    badge.className = "inline-block mt-1 text-sm font-bold px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300";
+                    badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> ควรยกเลิก ${p3Name} (กำไรดีกว่า ${formatNum(-diff)} บ.)`;
+                    conclusion.innerHTML = `ผู้บริหารควรเลือก <b>ทางเลือกที่ 1 (ยกเลิกการผลิต ${p3Name})</b> เพราะหากผลิตต่อจะทำให้กำไรสุทธิรวมลดลงไป <b>${formatNum(-diff)} บาท</b>`;
+                }
+            }
+
+            updateChartQ1([revPlank, revPrestressed, revSpun], [costPlank, costPrestressed, costSpun], [profitPlank, profitPrestressed, profitSpun]);
+        }
+
+        function calcQ2() {
+            const pctProd = (parseFloat(document.getElementById('q2-pct-prod')?.value) || 60) / 100;
+            const pctAdmin = (parseFloat(document.getElementById('q2-pct-admin')?.value) || 8) / 100;
+            const pctTax = (parseFloat(document.getElementById('q2-pct-tax')?.value) || 20) / 100;
+            const ohRate = parseFloat(document.getElementById('q2-oh-rate')?.value) || 30;
+
+            const qtyExt = parseFloat(document.getElementById('q2-qty-ext')?.value) || 0;
+            const priceExt = parseFloat(document.getElementById('q2-price-ext')?.value) || 0;
+            const revExt = qtyExt * priceExt;
+
+            const qtyInt = parseFloat(document.getElementById('q2-qty-int')?.value) || 0;
+            const priceInt = parseFloat(document.getElementById('q2-price-int')?.value) || 0;
+            const revInt = qtyInt * priceInt;
+
+            const totalRev = revExt + revInt;
+
+            if (document.getElementById('q2-rev-ext')) document.getElementById('q2-rev-ext').textContent = formatNum(revExt);
+            if (document.getElementById('q2-rev-int')) document.getElementById('q2-rev-int').textContent = formatNum(revInt);
+            if (document.getElementById('q2-total-rev')) document.getElementById('q2-total-rev').textContent = formatNum(totalRev) + " บาท";
+
+            // Direct Materials
+            const r1 = parseFloat(document.getElementById('q2-mat-rate1')?.value) || 0;
+            const r2 = parseFloat(document.getElementById('q2-mat-rate2')?.value) || 0;
+            const r3 = parseFloat(document.getElementById('q2-mat-rate3')?.value) || 0;
+            const r4 = parseFloat(document.getElementById('q2-mat-rate4')?.value) || 0;
+
+            const amt1 = r1 * 1000;
+            const amt2 = r2 * 1000;
+            const amt3 = r3 * 1000;
+            const amt4 = r4 * 1000;
+            const matTotal = amt1 + amt2 + amt3 + amt4;
+
+            if (document.getElementById('q2-mat-amt1')) document.getElementById('q2-mat-amt1').textContent = formatNum(amt1);
+            if (document.getElementById('q2-mat-amt2')) document.getElementById('q2-mat-amt2').textContent = formatNum(amt2);
+            if (document.getElementById('q2-mat-amt3')) document.getElementById('q2-mat-amt3').textContent = formatNum(amt3);
+            if (document.getElementById('q2-mat-amt4')) document.getElementById('q2-mat-amt4').textContent = formatNum(amt4);
+            if (document.getElementById('q2-mat-rate-total')) document.getElementById('q2-mat-rate-total').textContent = formatNum(r1 + r2 + r3 + r4);
+            if (document.getElementById('q2-mat-total')) document.getElementById('q2-mat-total').textContent = formatNum(matTotal);
+
+            // Direct Labor
+            const h1 = parseFloat(document.getElementById('q2-hrs1')?.value) || 0;
+            const lr1 = parseFloat(document.getElementById('q2-lrate1')?.value) || 0;
+            const lamt1 = h1 * lr1;
+
+            const h2 = parseFloat(document.getElementById('q2-hrs2')?.value) || 0;
+            const lr2 = parseFloat(document.getElementById('q2-lrate2')?.value) || 0;
+            const lamt2 = h2 * lr2;
+
+            const h3 = parseFloat(document.getElementById('q2-hrs3')?.value) || 0;
+            const lr3 = parseFloat(document.getElementById('q2-lrate3')?.value) || 0;
+            const lamt3 = h3 * lr3;
+
+            const h4 = parseFloat(document.getElementById('q2-hrs4')?.value) || 0;
+            const lr4 = parseFloat(document.getElementById('q2-lrate4')?.value) || 0;
+            const lamt4 = h4 * lr4;
+
+            const hrsTotal = h1 + h2 + h3 + h4;
+            const laborTotal = lamt1 + lamt2 + lamt3 + lamt4;
+
+            if (document.getElementById('q2-lamt1')) document.getElementById('q2-lamt1').textContent = formatNum(lamt1);
+            if (document.getElementById('q2-lamt2')) document.getElementById('q2-lamt2').textContent = formatNum(lamt2);
+            if (document.getElementById('q2-lamt3')) document.getElementById('q2-lamt3').textContent = formatNum(lamt3);
+            if (document.getElementById('q2-lamt4')) document.getElementById('q2-lamt4').textContent = formatNum(lamt4);
+            if (document.getElementById('q2-hrs-total')) document.getElementById('q2-hrs-total').textContent = formatNum(hrsTotal) + " ชม.";
+            if (document.getElementById('q2-labor-total')) document.getElementById('q2-labor-total').textContent = formatNum(laborTotal);
+
+            // Factory Overhead
+            const fohTotal = hrsTotal * ohRate;
+            if (document.getElementById('q2-foh-hrs')) document.getElementById('q2-foh-hrs').textContent = formatNum(hrsTotal) + " ชม.";
+            if (document.getElementById('q2-foh-rate-disp')) document.getElementById('q2-foh-rate-disp').textContent = formatNum(ohRate) + " บ./ชม.";
+            if (document.getElementById('q2-oh-total')) document.getElementById('q2-oh-total').textContent = formatNum(fohTotal) + " บาท";
+
+            // Actual Summary
+            const actualProdCost = matTotal + laborTotal + fohTotal;
+            if (document.getElementById('q2-summary-dm')) document.getElementById('q2-summary-dm').textContent = formatNum(matTotal);
+            if (document.getElementById('q2-summary-dl')) document.getElementById('q2-summary-dl').textContent = formatNum(laborTotal);
+            if (document.getElementById('q2-summary-foh')) document.getElementById('q2-summary-foh').textContent = formatNum(fohTotal);
+            if (document.getElementById('q2-actual-prod-cost')) document.getElementById('q2-actual-prod-cost').textContent = formatNum(actualProdCost);
+
+            // Comprehensive Income & Variance
+            const estCost = totalRev * pctProd;
+            const actCost = actualProdCost;
+            const varCost = estCost - actCost;
+
+            const estGP = totalRev - estCost;
+            const actGP = totalRev - actCost;
+            const varGP = actGP - estGP;
+
+            const estAdmin = totalRev * pctAdmin;
+            const actAdmin = estAdmin;
+            const varAdmin = 0;
+
+            const estPBT = estGP - estAdmin;
+            const actPBT = actGP - actAdmin;
+            const varPBT = actPBT - estPBT;
+
+            const estTax = estPBT * pctTax;
+            const actTax = actPBT * pctTax;
+            const varTax = estTax - actTax;
+
+            const estNP = estPBT - estTax;
+            const actNP = actPBT - actTax;
+            const varNP = actNP - estNP;
+
+            if (document.getElementById('q2-comp-est-rev')) document.getElementById('q2-comp-est-rev').textContent = formatNum(totalRev);
+            if (document.getElementById('q2-comp-act-rev')) document.getElementById('q2-comp-act-rev').textContent = formatNum(totalRev);
+
+            if (document.getElementById('q2-comp-est-cost')) document.getElementById('q2-comp-est-cost').innerHTML = `${formatNum(estCost)} <span class="text-[10px] text-slate-400 block">(${Math.round(pctProd*100)}%)</span>`;
+            if (document.getElementById('q2-comp-act-cost')) document.getElementById('q2-comp-act-cost').textContent = formatNum(actCost);
+            if (document.getElementById('q2-comp-var-cost')) document.getElementById('q2-comp-var-cost').textContent = (varCost >= 0 ? "+" : "") + formatNum(varCost);
+
+            if (document.getElementById('q2-comp-est-gp')) document.getElementById('q2-comp-est-gp').textContent = formatNum(estGP);
+            if (document.getElementById('q2-comp-act-gp')) document.getElementById('q2-comp-act-gp').textContent = formatNum(actGP);
+            if (document.getElementById('q2-comp-var-gp')) document.getElementById('q2-comp-var-gp').textContent = (varGP >= 0 ? "+" : "") + formatNum(varGP);
+
+            if (document.getElementById('q2-comp-est-admin')) document.getElementById('q2-comp-est-admin').innerHTML = `${formatNum(estAdmin)} <span class="text-[10px] text-slate-400 block">(${Math.round(pctAdmin*100)}%)</span>`;
+            if (document.getElementById('q2-comp-act-admin')) document.getElementById('q2-comp-act-admin').textContent = formatNum(actAdmin);
+
+            if (document.getElementById('q2-comp-est-pbt')) document.getElementById('q2-comp-est-pbt').textContent = formatNum(estPBT);
+            if (document.getElementById('q2-comp-act-pbt')) document.getElementById('q2-comp-act-pbt').textContent = formatNum(actPBT);
+            if (document.getElementById('q2-comp-var-pbt')) document.getElementById('q2-comp-var-pbt').textContent = (varPBT >= 0 ? "+" : "") + formatNum(varPBT);
+
+            if (document.getElementById('q2-comp-est-tax')) document.getElementById('q2-comp-est-tax').innerHTML = `${formatNum(estTax)} <span class="text-[10px] text-slate-400 block">(${Math.round(pctTax*100)}%)</span>`;
+            if (document.getElementById('q2-comp-act-tax')) document.getElementById('q2-comp-act-tax').textContent = formatNum(actTax);
+            if (document.getElementById('q2-comp-var-tax')) document.getElementById('q2-comp-var-tax').textContent = formatNum(varTax);
+
+            if (document.getElementById('q2-comp-est-np')) document.getElementById('q2-comp-est-np').textContent = formatNum(estNP);
+            if (document.getElementById('q2-comp-act-np')) document.getElementById('q2-comp-act-np').textContent = formatNum(actNP);
+            if (document.getElementById('q2-comp-var-np')) document.getElementById('q2-comp-var-np').textContent = (varNP >= 0 ? "+" : "") + formatNum(varNP);
+
+            const badgeHeader = document.getElementById('q2-net-variance-badge');
+            if (badgeHeader) {
+                if (varNP >= 0) {
+                    badgeHeader.className = "inline-block mt-1 text-sm font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
+                    badgeHeader.innerHTML = `<i class="fa-solid fa-thumbs-up mr-1"></i> น่าพอใจ (+${formatNum(varNP)} บ.)`;
+                } else {
+                    badgeHeader.className = "inline-block mt-1 text-sm font-bold px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300";
+                    badgeHeader.innerHTML = `<i class="fa-solid fa-thumbs-down mr-1"></i> ไม่น่าพอใจ (${formatNum(varNP)} บ.)`;
+                }
+            }
+
+            updateChartQ2([estCost, estGP, estPBT, estNP], [actCost, actGP, actPBT, actNP]);
+        }
+
+        function updateChartQ1(sales, costs, profits) {
+            if (!chartQ1Instance) return;
+            const p1Name = document.getElementById('q1-name-p1')?.innerText.trim() || 'ผลิตภัณฑ์ 1';
+            const p2Name = document.getElementById('q1-name-p2')?.innerText.trim() || 'ผลิตภัณฑ์ 2';
+            const p3Name = document.getElementById('q1-name-p3')?.innerText.trim() || 'ผลิตภัณฑ์ 3';
+
+            chartQ1Instance.data.labels = [p1Name, p2Name, p3Name];
+            chartQ1Instance.data.datasets[0].data = sales;
+            chartQ1Instance.data.datasets[1].data = costs;
+            chartQ1Instance.data.datasets[2].data = profits;
+            chartQ1Instance.update();
+        }
+
+        function updateChartQ2(estData, actData) {
+            if (!chartQ2Instance) return;
+            chartQ2Instance.data.datasets[0].data = estData;
+            chartQ2Instance.data.datasets[1].data = actData;
+            chartQ2Instance.update();
+        }
+
+        function initCharts() {
+            const ctx1 = document.getElementById('chartQ1')?.getContext('2d');
+            if (ctx1) {
+                chartQ1Instance = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: ['แผ่นพื้นสำเร็จรูป', 'เสาเข็มอัดแรง', 'เสาเข็ม Spun Pile'],
+                        datasets: [
+                            { label: 'ยอดขายรวม', data: [0, 0, 0], backgroundColor: '#3b82f6' },
+                            { label: 'ต้นทุนรวม', data: [0, 0, 0], backgroundColor: '#ef4444' },
+                            { label: 'กำไร (ขาดทุน) สุทธิ', data: [0, 0, 0], backgroundColor: '#10b981' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { callback: function(val) { return val.toLocaleString('th-TH') + ' บ.'; } }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const ctx2 = document.getElementById('chartQ2')?.getContext('2d');
+            if (ctx2) {
+                chartQ2Instance = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: ['ต้นทุนการผลิต', 'กำไรขั้นต้น', 'กำไรก่อนภาษี', 'กำไรสุทธิ'],
+                        datasets: [
+                            { label: 'เกณฑ์กะประมาณ (Budget)', data: [0, 0, 0, 0], backgroundColor: '#64748b' },
+                            { label: 'เกิดขึ้นจริง (Actual)', data: [0, 0, 0, 0], backgroundColor: '#059669' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { callback: function(val) { return val.toLocaleString('th-TH') + ' บ.'; } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            if (toast && toastMsg) {
+                toastMsg.textContent = msg;
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+                setTimeout(() => {
+                    toast.classList.remove('translate-y-0', 'opacity-100');
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 3000);
+            }
+        }
+
+        function resetDefaults() {
+            if (document.getElementById('q1-name-p1')) document.getElementById('q1-name-p1').innerText = "แผ่นพื้นสำเร็จรูป";
+            if (document.getElementById('q1-name-p2')) document.getElementById('q1-name-p2').innerText = "เสาเข็มอัดแรง";
+            if (document.getElementById('q1-name-p3')) document.getElementById('q1-name-p3').innerText = "เสาเข็ม Spun Pile";
+
+            if (document.getElementById('q2-name-ext')) document.getElementById('q2-name-ext').innerText = "ผนังภายนอก (Exterior Panel)";
+            if (document.getElementById('q2-name-int')) document.getElementById('q2-name-int').innerText = "ผนังภายใน (Interior Panel)";
+
+            if (document.getElementById('q2-dept-name-1')) document.getElementById('q2-dept-name-1').innerText = "1. เตรียมแบบหล่อ (5 ต.ค.)";
+            if (document.getElementById('q2-dept-name-2')) document.getElementById('q2-dept-name-2').innerText = "2. ตัดเหล็ก/ติดตั้ง (20 ต.ค.)";
+            if (document.getElementById('q2-dept-name-3')) document.getElementById('q2-dept-name-3').innerText = "3. เทคอนกรีต/แต่งผิว (1 พ.ย.)";
+            if (document.getElementById('q2-dept-name-4')) document.getElementById('q2-dept-name-4').innerText = "4. แกะแบบ/ขนส่ง (20 พ.ย.)";
+
+            // Q1 Numbers
+            if (document.getElementById('q1-vol-plank')) document.getElementById('q1-vol-plank').value = 8000;
+            if (document.getElementById('q1-vol-prestressed')) document.getElementById('q1-vol-prestressed').value = 5000;
+            if (document.getElementById('q1-vol-spun')) document.getElementById('q1-vol-spun').value = 1500;
+
+            if (document.getElementById('q1-price-plank')) document.getElementById('q1-price-plank').value = 500;
+            if (document.getElementById('q1-price-prestressed')) document.getElementById('q1-price-prestressed').value = 6500;
+            if (document.getElementById('q1-price-spun')) document.getElementById('q1-price-spun').value = 9000;
+
+            if (document.getElementById('q1-matunit-plank')) document.getElementById('q1-matunit-plank').value = 300;
+            if (document.getElementById('q1-matunit-prestressed')) document.getElementById('q1-matunit-prestressed').value = 3500;
+            if (document.getElementById('q1-matunit-spun')) document.getElementById('q1-matunit-spun').value = 7500;
+
+            if (document.getElementById('q1-dep-plank')) document.getElementById('q1-dep-plank').value = 12000;
+            if (document.getElementById('q1-dep-prestressed')) document.getElementById('q1-dep-prestressed').value = 12000;
+            if (document.getElementById('q1-dep-spun')) document.getElementById('q1-dep-spun').value = 12000;
+
+            if (document.getElementById('q1-lounit-plank')) document.getElementById('q1-lounit-plank').value = 50;
+            if (document.getElementById('q1-lounit-prestressed')) document.getElementById('q1-lounit-prestressed').value = 50;
+            if (document.getElementById('q1-lounit-spun')) document.getElementById('q1-lounit-spun').value = 50;
+
+            // Q2 Numbers
+            if (document.getElementById('q2-pct-prod')) document.getElementById('q2-pct-prod').value = 60;
+            if (document.getElementById('q2-pct-admin')) document.getElementById('q2-pct-admin').value = 8;
+            if (document.getElementById('q2-pct-tax')) document.getElementById('q2-pct-tax').value = 20;
+            if (document.getElementById('q2-oh-rate')) document.getElementById('q2-oh-rate').value = 30;
+
+            if (document.getElementById('q2-qty-ext')) document.getElementById('q2-qty-ext').value = 400;
+            if (document.getElementById('q2-price-ext')) document.getElementById('q2-price-ext').value = 5000;
+            if (document.getElementById('q2-qty-int')) document.getElementById('q2-qty-int').value = 600;
+            if (document.getElementById('q2-price-int')) document.getElementById('q2-price-int').value = 3500;
+
+            if (document.getElementById('q2-mat-rate1')) document.getElementById('q2-mat-rate1').value = 100;
+            if (document.getElementById('q2-mat-rate2')) document.getElementById('q2-mat-rate2').value = 200;
+            if (document.getElementById('q2-mat-rate3')) document.getElementById('q2-mat-rate3').value = 500;
+            if (document.getElementById('q2-mat-rate4')) document.getElementById('q2-mat-rate4').value = 200;
+
+            if (document.getElementById('q2-hrs1')) document.getElementById('q2-hrs1').value = 240;
+            if (document.getElementById('q2-lrate1')) document.getElementById('q2-lrate1').value = 20;
+            if (document.getElementById('q2-hrs2')) document.getElementById('q2-hrs2').value = 240;
+            if (document.getElementById('q2-lrate2')) document.getElementById('q2-lrate2').value = 30;
+            if (document.getElementById('q2-hrs3')) document.getElementById('q2-hrs3').value = 320;
+            if (document.getElementById('q2-lrate3')) document.getElementById('q2-lrate3').value = 50;
+            if (document.getElementById('q2-hrs4')) document.getElementById('q2-hrs4').value = 120;
+            if (document.getElementById('q2-lrate4')) document.getElementById('q2-lrate4').value = 20;
+
+            calcQ1();
+            calcQ2();
+            showToast("รีเซ็ตข้อความและตัวเลขกลับเป็นโจทย์ตั้งต้นเรียบร้อยแล้ว");
+        }
+
+        window.onload = function() {
+            initCharts();
+            calcQ1();
+            calcQ2();
+
+            // Listen to all editable text changes dynamically to re-calculate logic and charts
+            document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                el.addEventListener('input', () => {
+                    calcQ1();
+                    calcQ2();
+                });
+            });
+        };
+    </script>
+</body>
+</html>
